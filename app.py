@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
@@ -8,44 +9,30 @@ import boto3
 expediente = "Alexis Geovanni Flores Vazquez" 
 nombre_completo = "Alexis Geovanni Flores Vazquez"
 
-
-
 app = FastAPI(title="Practica 4 - Emisor")
 
 
-S3_BUCKET = "practica-4-752798" 
-SQS_QUEUE_NAME = "cola-boletines"
-REGION = "us-east-1"
-
-
-
+S3_BUCKET = os.getenv("S3_BUCKET", "practica-4-752798")
+SQS_QUEUE_NAME = os.getenv("SQS_QUEUE_NAME", "cola-boletines")
+REGION = os.getenv("AWS_REGION", "us-east-1")
 
 def s3_client():
-
     return boto3.client('s3', region_name=REGION)
 
 def sqs_client():
-
     return boto3.client('sqs', region_name=REGION)
 
-
-
 def s3_upload_file(file: UploadFile, filename: str) -> str:
-
     cliente = s3_client()
     cliente.upload_fileobj(file.file, S3_BUCKET, filename)
     return f"https://{S3_BUCKET}.s3.{REGION}.amazonaws.com/{filename}"
 
-
 def sqs_get_queue_url() -> str:
-
     cliente = sqs_client()
     response = cliente.get_queue_url(QueueName=SQS_QUEUE_NAME)
     return response['QueueUrl']
 
-
 def sqs_send_message(queue_url: str, correo: str, mensaje: str, s3_url: str) -> None:
-
     cliente = sqs_client()
     cuerpo_mensaje = {
         'correo': correo,
@@ -58,10 +45,7 @@ def sqs_send_message(queue_url: str, correo: str, mensaje: str, s3_url: str) -> 
         MessageBody=json.dumps(cuerpo_mensaje)
     )
 
-
-
 def handle_crear_boletin(archivo: UploadFile, mensaje: str, correo: str) -> Dict[str, Any]:
-
     if not archivo or not mensaje or not correo:
         raise HTTPException(status_code=400, detail="Faltan parámetros (archivo, mensaje o correo)")
     
@@ -80,9 +64,6 @@ def handle_crear_boletin(archivo: UploadFile, mensaje: str, correo: str) -> Dict
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-
-
 @app.post("/boletines", status_code=201)
 def crear_boletin(
     archivo: UploadFile = File(...),
@@ -90,6 +71,7 @@ def crear_boletin(
     correo: str = Form(...)
 ):
     return handle_crear_boletin(archivo, mensaje, correo)
+
 
 
 
